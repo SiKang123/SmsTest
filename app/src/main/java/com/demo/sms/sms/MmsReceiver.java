@@ -1,24 +1,13 @@
-package com.demo.sms.service.sms;
+package com.demo.sms.sms;
 
 import android.content.BroadcastReceiver;
-import android.content.ContentUris;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.provider.Telephony;
-import android.util.Log;
-import android.widget.Toast;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Random;
 
 import com.demo.sms.BuildConfig;
-import com.demo.sms.service.utils.PreferencesManager;
+import com.demo.sms.utils.PreferencesManager;
 
 
 /**

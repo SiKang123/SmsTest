@@ -1,4 +1,4 @@
-package com.demo.sms.service.phone_call;
+package com.demo.sms.phone_call;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -10,7 +10,7 @@ import android.support.annotation.RequiresApi;
 import android.telecom.InCallService;
 
 import com.demo.sms.BuildConfig;
-import com.demo.sms.service.utils.PreferencesManager;
+import com.demo.sms.utils.PreferencesManager;
 
 /**
  * Created by SiKang on 2018/11/5.

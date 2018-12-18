@@ -1,4 +1,4 @@
-package com.demo.sms.service.utils;
+package com.demo.sms.utils;
 
 import android.app.Activity;
 import android.content.Context;

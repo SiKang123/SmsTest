@@ -6,15 +6,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Telephony;
 import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telecom.TelecomManager;
 import android.view.View;
 import android.widget.Toast;
 
-import com.demo.sms.service.utils.PreferencesManager;
+import com.demo.sms.utils.PreferencesManager;
 
 public class MainActivity extends AppCompatActivity {
 

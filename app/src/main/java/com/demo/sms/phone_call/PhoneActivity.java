@@ -1,4 +1,4 @@
-package com.demo.sms.service.phone_call;
+package com.demo.sms.phone_call;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -9,7 +9,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 
 import com.demo.sms.BuildConfig;
-import com.demo.sms.service.utils.PreferencesManager;
+import com.demo.sms.utils.PreferencesManager;
 
 /**
  * Created by SiKang on 2018/11/5.

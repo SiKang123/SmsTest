@@ -1,4 +1,4 @@
-package com.demo.sms.service.sms;
+package com.demo.sms.sms;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

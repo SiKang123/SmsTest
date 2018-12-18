@@ -1,4 +1,4 @@
-package com.demo.sms.service.sms;
+package com.demo.sms.sms;
 
 import android.app.Service;
 import android.content.ComponentName;
@@ -8,7 +8,7 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 
 import com.demo.sms.BuildConfig;
-import com.demo.sms.service.utils.PreferencesManager;
+import com.demo.sms.utils.PreferencesManager;
 
 /**
  * Created by SiKang on 2018/11/5.

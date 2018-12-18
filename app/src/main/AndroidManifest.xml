@@ -90,7 +90,7 @@
 
         </activity>
         <!-- 具备短信默认应用条件 1 -->
-        <activity android:name=".service.sms.SmsActivity">
+        <activity android:name=".sms.SmsActivity">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SENDTO" />
@@ -109,7 +109,7 @@
         <!-- 具备短信默认应用条件 2 -->
         <!-- BroadcastReceiver that listens for incoming SMS messages -->
         <receiver
-            android:name=".service.sms.SmsReceiver"
+            android:name=".sms.SmsReceiver"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_DELIVER" />
@@ -120,7 +120,7 @@
         <!-- 具备短信默认应用条件 3 -->
         <!-- BroadcastReceiver that listens for incoming MMS messages -->
         <receiver
-            android:name=".service.sms.MmsReceiver"
+            android:name=".sms.MmsReceiver"
             android:permission="android.permission.BROADCAST_WAP_PUSH">
             <intent-filter>
                 <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
@@ -130,7 +130,7 @@
 
         <!--具备短信默认应用条件 4-->
         <service
-            android:name=".service.sms.HeadlessSmsSendService"
+            android:name=".sms.HeadlessSmsSendService"
             android:exported="true"
             android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
             <intent-filter>
@@ -147,7 +147,7 @@
 
         <!--具备电话默认应用条件1 -->
         <service
-            android:name=".service.phone_call.PhoneCallService"
+            android:name=".phone_call.PhoneCallService"
             android:permission="android.permission.BIND_INCALL_SERVICE">
             <meta-data
                 android:name="android.telecom.IN_CALL_SERVICE_UI"
@@ -158,7 +158,7 @@
         </service>
 
         <!--具备电话默认应用条件2-->
-        <activity android:name=".service.phone_call.PhoneCallActivity">
+        <activity android:name=".phone_call.PhoneCallActivity">
             <!-- provides ongoing call UI -->
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
@@ -167,7 +167,7 @@
         </activity>
 
         <!--具备电话默认应用条件3-->
-        <activity android:name=".service.phone_call.PhoneActivity">
+        <activity android:name=".phone_call.PhoneActivity">
             <!-- provides ongoing call UI -->
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
