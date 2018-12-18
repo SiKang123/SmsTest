@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
 
         PreferencesManager.get().init(getApplicationContext());
 
-        //申请默认短信
+        //申请默认短信,会弹出授权框，同意后会成为默认短信程序
         findViewById(R.id.default_sms).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //申请默认电话
+        //申请默认电话,会弹出授权框，同意后会成为默认电话程序
         findViewById(R.id.default_call).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -68,9 +68,9 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.send_sms).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //清除默认启动项
+                //清除默认启动项，清除后依然是默认程序，但是不会自动响应短信跳转
                 getPackageManager().clearPackagePreferredActivities(BuildConfig.APPLICATION_ID);
-                //发起短信intent
+                //发起短信intent，清除启动项后，会让用户主动选择启动目标，用户点击系统短信，就可以回到系统短信APP
                 Uri sms_uri = Uri.parse("smsto:13517596490");//设置号码
                 Intent intent = new Intent(Intent.ACTION_SENDTO, sms_uri);//调用发短信Action
                 intent.putExtra("sms_body", "testest");
