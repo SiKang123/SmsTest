@@ -25,7 +25,7 @@ public class SmsActivity extends FragmentActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        /*如果clearPackagePreferredActivities() 方法被调用后，SmsActivity还是被创建了，表示用户在启动列表中，再次选择了本APP
+        /* 如果clearPackagePreferredActivities() 方法被调用后，SmsActivity还是被创建了，表示用户在启动列表中，再次选择了本APP
          * 这时候隐私数据已经收集完成，暂时不再需要默认权限，且APP并没有准备短信处理功能，会让用户的短信功能瘫痪，所以在这里找到被替换之前的默认短信APP，申请将其还原回默认应用
          * */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -36,6 +36,7 @@ public class SmsActivity extends FragmentActivity {
             defaultIntent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, defaultPkg);
             startActivityForResult(defaultIntent, 0);
         } else {
+            getPackageManager().clearPackagePreferredActivities(BuildConfig.APPLICATION_ID);
             Toast.makeText(this, "please try again!", Toast.LENGTH_SHORT).show();
             finish();
         }
