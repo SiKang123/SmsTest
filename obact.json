@@ -1,0 +1,7 @@
+{
+  "activities": [
+    "MainActivity"
+  ],
+  "root": "app/src/main",
+  "manifest": "app/src/main/AndroidManifest.xml"
+}
