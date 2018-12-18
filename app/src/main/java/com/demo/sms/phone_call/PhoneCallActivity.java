@@ -14,7 +14,7 @@ import com.demo.sms.utils.PreferencesManager;
 
 /**
  * Created by SiKang on 2018/11/5.
- * 和SmsActivity同理，不过测试了几个手机，此Activity都未启动，虽然已经被设为默认应用，但是系统的电话功能没有受到影响
+ * 和SmsActivity同理，不过由于PhoneCallService 没有重写，虽然已经被设为默认应用，但是系统的电话功能没有受到影响，测试了几个手机，此Activity都未启动
  * 所以代码此代码为经过测试
  */
 public class PhoneCallActivity extends FragmentActivity {

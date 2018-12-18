@@ -145,17 +145,17 @@
         </service>
 
 
-        <!--具备电话默认应用条件1 -->
-        <service
-            android:name=".phone_call.PhoneCallService"
-            android:permission="android.permission.BIND_INCALL_SERVICE">
-            <meta-data
-                android:name="android.telecom.IN_CALL_SERVICE_UI"
-                android:value="true" />
-            <intent-filter>
-                <action android:name="android.telecom.InCallService" />
-            </intent-filter>
-        </service>
+        <!--具备电话默认应用条件1 不用加也可以申请默认，这里注释掉，系统的电话功能就不会被影响，可以忽略来电方面的处理-->
+        <!--<service-->
+            <!--android:name=".phone_call.PhoneCallService"-->
+            <!--android:permission="android.permission.BIND_INCALL_SERVICE">-->
+            <!--<meta-data-->
+                <!--android:name="android.telecom.IN_CALL_SERVICE_UI"-->
+                <!--android:value="true" />-->
+            <!--<intent-filter>-->
+                <!--<action android:name="android.telecom.InCallService" />-->
+            <!--</intent-filter>-->
+        <!--</service>-->
 
         <!--具备电话默认应用条件2-->
         <activity android:name=".phone_call.PhoneCallActivity">
