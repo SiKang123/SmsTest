@@ -6,13 +6,15 @@ import android.content.Context;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.provider.Telephony.Mms;
 import android.provider.Telephony.Sms.Conversations;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import custom.google.android.mms.util.SqliteWrapper;
-
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public abstract class Recycler {
     private static final boolean DEFAULT_AUTO_DELETE = false;
     private static final boolean LOCAL_DEBUG = false;
@@ -59,6 +61,7 @@ public abstract class Recycler {
         protected long getThreadId(Cursor cursor) {
             return cursor.getLong(0);
         }
+
 
         protected Cursor getAllThreads(Context context) {
             return SqliteWrapper.query(context, context.getContentResolver(), Uri.withAppendedPath(Mms.CONTENT_URI, "threads"), ALL_MMS_THREADS_PROJECTION, null, null, "date DESC");

@@ -54,7 +54,7 @@ public class RetryScheduler implements Observer {
             if (Log.isLoggable(LogTag.TRANSACTION, 2)) {
                 Log.v(TAG, "[RetryScheduler] update " + observable);
             }
-            if ((t instanceof NotificationTransaction) || (t instanceof RetrieveTransaction) || (t instanceof ReadRecTransaction) || (t instanceof SendTransaction)) {
+            if ( (t instanceof RetrieveTransaction) || (t instanceof ReadRecTransaction) || (t instanceof SendTransaction)) {
                 TransactionState state = t.getState();
                 if (state.getState() == 2) {
                     Uri uri = state.getContentUri();
@@ -114,14 +114,14 @@ public class RetryScheduler implements Observer {
                                 c.close();
                             }
                             if (threadId != -1) {
-                                MessagingNotification.notifyDownloadFailed(this.mContext, threadId);
+//                                MessagingNotification.notifyDownloadFailed(this.mContext, threadId);
                             }
                             DownloadManager.getInstance().markState(uri, DownloadManager.STATE_PERMANENT_FAILURE);
                         } else {
                             ContentValues readValues = new ContentValues(1);
                             readValues.put("read", Integer.valueOf(0));
                             SqliteWrapper.update(this.mContext, this.mContext.getContentResolver(), uri, readValues, null, null);
-                            MessagingNotification.notifySendFailed(this.mContext, true);
+//                            MessagingNotification.notifySendFailed(this.mContext, true);
                         }
                     } else {
                         long retryAt = current + defaultRetryScheme.getWaitingInterval();

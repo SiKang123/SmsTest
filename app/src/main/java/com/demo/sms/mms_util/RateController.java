@@ -6,11 +6,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
+import android.os.Build;
 import android.provider.Telephony.Mms.Rate;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import custom.google.android.mms.util.SqliteWrapper;
-
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class RateController {
     private static final int ANSWER_NO = 2;
     public static final int ANSWER_TIMEOUT = 20000;
@@ -55,6 +57,7 @@ public class RateController {
         }
         throw new IllegalStateException("Uninitialized.");
     }
+
 
     public final void update() {
         ContentValues values = new ContentValues(1);

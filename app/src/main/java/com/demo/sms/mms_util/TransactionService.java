@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -15,6 +16,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.provider.Telephony.Mms;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import java.io.IOException;
@@ -24,6 +26,7 @@ import custom.android.common.NetworkConnectivityListener;
 import custom.google.android.mms.pdu.PduPersister;
 
 @SuppressLint({"LogTagMismatch", "WrongConstant"})
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class TransactionService extends Service implements Observer {
     public static final String ACTION_ONALARM = "android.intent.action.ACTION_ONALARM";
     private static final int APN_EXTENSION_WAIT = 30000;
@@ -125,6 +128,7 @@ public class TransactionService extends Service implements Observer {
         this.mConnectivityListener.registerHandler(this.mServiceHandler, 2);
         this.mConnectivityListener.startListening(this);
     }
+
 
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) {
@@ -332,8 +336,8 @@ public class TransactionService extends Service implements Observer {
                     switch (transaction.getType()) {
                         case 0:
                         case 1:
-                            MessagingNotification.blockingUpdateNewMessageIndicator(this, true, false);
-                            MessagingNotification.updateDownloadFailedNotification(this);
+//                            MessagingNotification.blockingUpdateNewMessageIndicator(this, true, false);
+//                            MessagingNotification.updateDownloadFailedNotification(this);
                             break;
                         case 2:
                             RateController.getInstance().update();

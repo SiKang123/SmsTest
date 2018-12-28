@@ -2,6 +2,8 @@ package com.demo.sms.mms_util;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 
 public class SendTransaction extends Transaction implements Runnable {
     private static final boolean DEBUG = false;
@@ -10,6 +12,7 @@ public class SendTransaction extends Transaction implements Runnable {
     private final Uri mSendReqURI;
     private Thread mThread;
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public SendTransaction(Context context, int transId, TransactionSettings connectionSettings, String uri) {
         super(context, transId, connectionSettings);
         this.mSendReqURI = Uri.parse(uri);
