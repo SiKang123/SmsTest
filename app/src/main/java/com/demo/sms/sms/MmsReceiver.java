@@ -1,54 +1,207 @@
 package com.demo.sms.sms;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.database.Cursor;
+import android.database.DatabaseUtils;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.provider.Telephony;
+import android.support.annotation.RequiresApi;
+import android.util.Log;
 
-import com.demo.sms.BuildConfig;
-import com.demo.sms.utils.PreferencesManager;
+
+import com.demo.sms.mms_util.MmsConfig;
+import com.demo.sms.mms_util.TransactionService;
+import com.demo.sms.utils.AppInfoUtils;
+
+import java.util.List;
+
+import custom.google.android.mms.MmsException;
+import custom.google.android.mms.pdu.DeliveryInd;
+import custom.google.android.mms.pdu.GenericPdu;
+import custom.google.android.mms.pdu.NotificationInd;
+import custom.google.android.mms.pdu.PduParser;
+import custom.google.android.mms.pdu.PduPersister;
+import custom.google.android.mms.pdu.ReadOrigInd;
+import custom.google.android.mms.util.SqliteWrapper;
 
 
 /**
  * Created by SiKang on 2018/11/5.
- * 彩信
+ * 接收彩信，并将彩信保存到数据库
  */
 public class MmsReceiver extends BroadcastReceiver {
-//    private static final String FROM_NUM = "146";
-//    private static final String IMAGE_NAME_1 = "image_1.jpeg";
-//    private static final String IMAGE_NAME_2 = "image_2.jpeg";
-//
-//    private static final String SMIL_TEXT_IMAGE = "<smil><head><layout><root-layout width=\"320px\" height=\"480px\"/><region id=\"Text\" left=\"0\" top=\"320\" width=\"320px\" height=\"160px\" fit=\"meet\"/><region id=\"Image\" left=\"0\" top=\"0\" width=\"320px\" height=\"320px\" fit=\"meet\"/></layout></head><body><par dur=\"2000ms\"><text src=\"text_1.txt\" region=\"Text\"/><img src=\"%s\" region=\"Image\"/></par><par dur=\"2000ms\"><text src=\"text_2.txt\" region=\"Text\"/><img src=\"%s\" region=\"Image\"/></par></body></smil>";
-//    private static final String IMAGE_CID = "<img_cid>";
-//
-//    private static final String AUDIO_NAME = "audio_1.ogg";
-//    private static final String SMIL_TEXT_AUDIO = "<smil><head><layout><root-layout width=\"320px\" height=\"480px\"/><region id=\"Text\" left=\"0\" top=\"320\" width=\"320px\" height=\"160px\" fit=\"meet\"/><region id=\"Image\" left=\"0\" top=\"0\" width=\"320px\" height=\"320px\" fit=\"meet\"/></layout></head><body><par dur=\"21500ms\"><text src=\"text_1.txt\" region=\"Text\"/><audio src=\""
-//            + AUDIO_NAME + "\" dur=\"21500\" /></par></body></smil>";
-//    private static final String AUDIO_CID = "<300k>";
-//
-//    private static final String VIDEO_NAME = "video_1.3gp";
-//    private static final String SMIL_TEXT_VIDEO = "<smil><head><layout><root-layout width=\"320px\" height=\"480px\"/><region id=\"Text\" left=\"0\" top=\"320\" width=\"320px\" height=\"160px\" fit=\"meet\"/><region id=\"Image\" left=\"0\" top=\"0\" width=\"320px\" height=\"320px\" fit=\"meet\"/></layout></head><body><par dur=\"21500ms\"><text src=\"text_1.txt\" region=\"Text\"/><VIDEO src=\""
-//            + VIDEO_NAME + "\" dur=\"21500\" /></par></body></smil>";
-//    private static final String VIDEO_CID = "<300k>";
+    private static final int DEFERRED_MASK = 4;
+    private static final boolean LOCAL_LOGV = false;
+    public static final int STATE_DOWNLOADING = 129;
+    public static final int STATE_PERMANENT_FAILURE = 135;
+    public static final int STATE_TRANSIENT_FAILURE = 130;
+    public static final int STATE_UNSTARTED = 128;
 
-    @Override
+    private static final String TAG = "PushReceiver";
+
+    @SuppressLint("WrongConstant")
     public void onReceive(Context context, Intent intent) {
-        context.getPackageManager().clearPackagePreferredActivities(BuildConfig.APPLICATION_ID);
-        //保存彩信比较麻烦，晚点再研究，这里收到彩信，直接申请恢复默认应用，但当前这条彩信会丢失
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            //获取被替换之前的默认应用
-            String defaultPkg = PreferencesManager.get().getDefaultSmsPackage();
-            //恢复默认应用
-            Intent defaultIntent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-            defaultIntent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, defaultPkg);
-            context.startActivity(defaultIntent);
+        if (!AppInfoUtils.isDefaultSmsApp(context) || Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            return;
+        }
+        if (intent.getAction().equals("android.provider.Telephony.WAP_PUSH_RECEIVED") && "application/vnd.wap.mms-message".equals(intent.getType())) {
+            new ReceivePushTask(context).execute(new Intent[]{intent});
         }
     }
 
+
+    private class ReceivePushTask extends AsyncTask<Intent, Void, Void> {
+        private Context mContext;
+
+        public ReceivePushTask(Context context) {
+            this.mContext = context;
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+        protected Void doInBackground(Intent... intents) {
+            GenericPdu pdu = new PduParser(intents[0].getByteArrayExtra("data")).parse();
+            if (pdu == null) {
+                return null;
+            }
+            PduPersister pduPersister = PduPersister.getPduPersister(this.mContext);
+            ContentResolver contentResolver = this.mContext.getContentResolver();
+            int type = pdu.getMessageType();
+            Uri uri;
+            try {
+                switch (type) {
+                    case STATE_TRANSIENT_FAILURE /*130*/:
+                        NotificationInd nInd = (NotificationInd) pdu;
+                        if (MmsConfig.getTransIdEnabled()) {
+                            byte[] contentLocation = nInd.getContentLocation();
+                            if ((byte) 61 == contentLocation[contentLocation.length - 1]) {
+                                byte[] transactionId = nInd.getTransactionId();
+                                byte[] contentLocationWithId = new byte[(contentLocation.length + transactionId.length)];
+                                System.arraycopy(contentLocation, 0, contentLocationWithId, 0, contentLocation.length);
+                                System.arraycopy(transactionId, 0, contentLocationWithId, contentLocation.length, transactionId.length);
+                                nInd.setContentLocation(contentLocationWithId);
+                            }
+                        }
+                        if (!isDuplicateNotification(this.mContext, nInd)) {
+                            uri = pduPersister.persist(pdu, Telephony.Mms.Inbox.CONTENT_URI);
+                            Intent intent = new Intent(this.mContext, TransactionService.class);
+                            intent.putExtra("uri", uri.toString());
+                            intent.putExtra("type", 0);
+                            this.mContext.startService(intent);
+                            break;
+                        }
+//                        uri = pduPersister.persist(pdu, Telephony.Mms.Inbox.CONTENT_URI);
+//                        ContentValues values = new ContentValues();
 //
-//    private void insert(Context context, int msgBoxType, AttachmentType type, int idx) {
-//        long threadId = Threads.getOrCreateThreadId(context, FROM_NUM + idx);
+//                        SqliteWrapper.insert(this.mContext, contentResolver, uri, values);
+
+                        break;
+                    case 134:
+                    case 136:
+                        long threadId = findThreadId(this.mContext, pdu, type);
+                        if (threadId != -1) {
+                            uri = pduPersister.persist(pdu, Telephony.Mms.Inbox.CONTENT_URI);
+                            ContentValues values1 = new ContentValues(1);
+                            values1.put("thread_id", Long.valueOf(threadId));
+                            SqliteWrapper.update(this.mContext, contentResolver, uri, values1, null, null);
+                            break;
+                        }
+                        break;
+                    default:
+                        try {
+                            Log.e(TAG, "Received unrecognized PDU.");
+                            break;
+                        } catch (RuntimeException e2) {
+                            Log.e(TAG, "Unexpected RuntimeException.", e2);
+                            break;
+                        }
+                }
+            } catch (MmsException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private static long findThreadId(Context context, GenericPdu pdu, int type) {
+        String messageId;
+        if (type == 134) {
+            messageId = new String(((DeliveryInd) pdu).getMessageId());
+        } else {
+            messageId = new String(((ReadOrigInd) pdu).getMessageId());
+        }
+        StringBuilder sb = new StringBuilder(40);
+        sb.append("m_id");
+        sb.append('=');
+        sb.append(DatabaseUtils.sqlEscapeString(messageId));
+        sb.append(" AND ");
+        sb.append("m_type");
+        sb.append('=');
+        sb.append(STATE_UNSTARTED);
+        Context context2 = context;
+        Cursor cursor = SqliteWrapper.query(context2, context.getContentResolver(), Telephony.Mms.CONTENT_URI, new String[]{"thread_id"}, sb.toString(), null, null);
+        if (cursor != null) {
+            try {
+                if (cursor.getCount() == 1 && cursor.moveToFirst()) {
+                    long j = cursor.getLong(0);
+                    return j;
+                }
+                cursor.close();
+            } finally {
+                cursor.close();
+            }
+        }
+        return -1;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private static boolean isDuplicateNotification(Context context, NotificationInd nInd) {
+        if (nInd.getContentLocation() != null) {
+            String[] selectionArgs = new String[]{new String(nInd.getContentLocation())};
+            Context context2 = context;
+            Cursor cursor = SqliteWrapper.query(context2, context.getContentResolver(), Telephony.Mms.CONTENT_URI, new String[]{"_id"}, "ct_l = ?", selectionArgs, null);
+            if (cursor != null) {
+                try {
+                    if (cursor.getCount() > 0) {
+                        return true;
+                    }
+                    cursor.close();
+                } finally {
+                    cursor.close();
+                }
+            }
+        }
+        return false;
+    }
+
+
+    public static boolean isInstalled(Context context, String pkgName) {
+        List<ApplicationInfo> mAppList = context.getPackageManager().getInstalledApplications(0);
+        if (pkgName == null) {
+            Log.w("Mms", "Null pkg name when checking if installed");
+            return false;
+        }
+        for (ApplicationInfo info : mAppList) {
+            if (info.packageName.equalsIgnoreCase(pkgName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+//
+//    private void insert(Context context,int msgBoxType, AttachmentType type, int idx) {
+//        long threadId = Telephony.Threads.getOrCreateThreadId(context, FROM_NUM + idx);
 //        Log.e("", "threadId = " + threadId);
 //
 //        String name_1 = null;
@@ -89,7 +242,7 @@ public class MmsReceiver extends BroadcastReceiver {
 //        cvMain.put(Mms.CONTENT_TYPE, "application/vnd.wap.multipart.related");
 //        cvMain.put(Mms.MESSAGE_CLASS, "personal");
 //        cvMain.put(Mms.MESSAGE_TYPE, 132); // Retrive-Conf Mms
-//        cvMain.put(Mms.MESSAGE_SIZE, getSize(context, name_1) + getSize(context, name_2) + 512);  // suppose have 512 bytes extra text size
+//        cvMain.put(Mms.MESSAGE_SIZE, getSize(name_1) + getSize(name_2) + 512);  // suppose have 512 bytes extra text size
 //        cvMain.put(Mms.PRIORITY, String.valueOf(129));
 //        cvMain.put(Mms.READ_REPORT, String.valueOf(129));
 //        cvMain.put(Mms.DELIVERY_REPORT, String.valueOf(129));
@@ -99,7 +252,7 @@ public class MmsReceiver extends BroadcastReceiver {
 //
 //        long msgId = 0;
 //        try {
-//            msgId = ContentUris.parseId(context.getContentResolver().insert(Mms.CONTENT_URI, cvMain));
+//            msgId = ContentUris.parseId(getContentResolver().insert(Mms.CONTENT_URI, cvMain));
 //        } catch (Exception e) {
 //            Log.e("", "insert pdu record failed", e);
 //            return;
@@ -127,21 +280,21 @@ public class MmsReceiver extends BroadcastReceiver {
 //        // insert parts
 //        Uri partUri = Uri.parse("content://mms/" + msgId + "/part");
 //        try {
-//            context.getContentResolver().insert(partUri, cvSmil);
+//            getContentResolver().insert(partUri, cvSmil);
 //
-//            Uri dataUri_1 = context.getContentResolver().insert(partUri, cv_part_1);
-//            if (!copyData(context, dataUri_1, name_1)) {
+//            Uri dataUri_1 = getContentResolver().insert(partUri, cv_part_1);
+//            if (!copyData(dataUri_1, name_1)) {
 //                Log.e("", "write " + name_1 + " failed");
 //                return;
 //            }
-//            context.getContentResolver().insert(partUri, cv_text_1);
+//            getContentResolver().insert(partUri, cv_text_1);
 //
-//            Uri dataUri_2 = context.getContentResolver().insert(partUri, cv_part_2);
-//            if (!copyData(context, dataUri_2, name_2)) {
+//            Uri dataUri_2 = getContentResolver().insert(partUri, cv_part_2);
+//            if (!copyData(dataUri_2, name_2)) {
 //                Log.e("", "write " + name_2 + " failed");
 //                return;
 //            }
-//            context.getContentResolver().insert(partUri, cv_text_2);
+//            getContentResolver().insert(partUri, cv_text_2);
 //        } catch (Exception e) {
 //            Log.e("", "insert part failed", e);
 //            return;
@@ -153,7 +306,7 @@ public class MmsReceiver extends BroadcastReceiver {
 //        cvAddr.put(Addr.ADDRESS, "703");
 //        cvAddr.put(Addr.TYPE, "151");
 //        cvAddr.put(Addr.CHARSET, 106);
-//        context.getContentResolver().insert(Uri.parse("content://mms/" + msgId + "/addr"), cvAddr);
+//        getContentResolver().insert(Uri.parse("content://mms/" + msgId + "/addr"), cvAddr);
 //
 //        // from address
 //        cvAddr.clear();
@@ -161,17 +314,17 @@ public class MmsReceiver extends BroadcastReceiver {
 //        cvAddr.put(Addr.ADDRESS, FROM_NUM + idx);
 //        cvAddr.put(Addr.TYPE, "137");
 //        cvAddr.put(Addr.CHARSET, 106);
-//        context.getContentResolver().insert(Uri.parse("content://mms/" + msgId + "/addr"), cvAddr);
+//        getContentResolver().insert(Uri.parse("content://mms/" + msgId + "/addr"), cvAddr);
 //    }
 //
-//    private int getSize(Context context, final String name) {
+//    private int getSize(final String name) {
 //        InputStream is = null;
 //        int size = 0;
 //
 //        try {
-//            is = context.getAssets().open(name);
+//            is = getAssets().open(name);
 //            byte[] buffer = new byte[1024];
-//            for (int len = 0; (len = is.read(buffer)) != -1; )
+//            for (int len = 0; (len = is.read(buffer)) != -1;)
 //                size += len;
 //            return size;
 //        } catch (FileNotFoundException e) {
@@ -205,16 +358,16 @@ public class MmsReceiver extends BroadcastReceiver {
 //        return cv;
 //    }
 //
-//    private boolean copyData(Context context, final Uri dataUri, final String name) {
+//    private boolean copyData(final Uri dataUri, final String name) {
 //        InputStream input = null;
 //        OutputStream output = null;
 //
 //        try {
-//            input = context.getAssets().open(name);
-//            output = context.getContentResolver().openOutputStream(dataUri);
+//            input = getAssets().open(name);
+//            output = getContentResolver().openOutputStream(dataUri);
 //
 //            byte[] buffer = new byte[1024];
-//            for (int len = 0; (len = input.read(buffer)) != -1; )
+//            for (int len = 0; (len = input.read(buffer)) != -1;)
 //                output.write(buffer, 0, len);
 //        } catch (FileNotFoundException e) {
 //            Log.e("", "failed to found file?", e);
@@ -240,4 +393,6 @@ public class MmsReceiver extends BroadcastReceiver {
 //    enum AttachmentType {
 //        IMAGE, AUDIO, VIDEO;
 //    }
+
+
 }
